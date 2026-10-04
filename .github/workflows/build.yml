@@ -23,13 +23,16 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
       - name: Accept Android licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Build release APK (online, con Chaquopy)
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+        run: gradle assembleRelease --stacktrace
         env:
           GRADLE_OPTS: -Dorg.gradle.daemon=false
 
