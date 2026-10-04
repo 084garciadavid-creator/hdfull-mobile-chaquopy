@@ -1,0 +1,114 @@
+package com.hermes.hdfull.data.resolvers
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
+
+/**
+ * Resolutor nativo de URLs de vídeo: convierte la URL de un reproductor
+ * embebido (doodstream, voe, mixdrop…) en la URL directa del fichero
+ * (.mp4 / .m3u8). Equivalente en Kotlin a los plugins de ResolveURL,
+ * implementado con HTTP + análisis de texto, sin WebView.
+ */
+
+/** Vídeo resuelto con sus headers necesarios (Referer, Origin, etc.). */
+data class ResolvedVideo(
+    val url: String,
+    val referer: String? = null,
+    val headers: Map<String, String> = emptyMap()
+)
+
+interface VideoResolver {
+    /** Nombre del servidor que resuelve. */
+    val name: String
+
+    /** true si este resolutor puede manejar la URL dada. */
+    fun matches(url: String): Boolean
+
+    /**
+     * Devuelve el vídeo resuelto con sus headers, o null si no puede.
+     * Se ejecuta en Dispatchers.IO.
+     */
+    suspend fun resolve(url: String): ResolvedVideo?
+}
+
+/** Cliente HTTP compartido por los resolutores, con las cookies de sesión de HdfullClient. */
+internal val resolverHttp: OkHttpClient by lazy {
+    OkHttpClient.Builder()
+        .cookieJar(com.hermes.hdfull.data.HdfullClient.sharedCookieJar)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .build()
+}
+
+internal const val RESOLVER_UA =
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+
+internal suspend fun httpGet(url: String, referer: String? = null): String? =
+    withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url(url)
+                .header("User-Agent", RESOLVER_UA)
+                .apply { if (referer != null) header("Referer", referer) }
+                .build()
+            resolverHttp.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                resp.body?.string()
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+internal fun hostOf(url: String): String =
+    try {
+        url.toHttpUrl().host.lowercase()
+    } catch (e: Exception) {
+        ""
+    }
+
+/**
+ * Registro de resolutores. Se prueban en orden; el primero que acepte
+ * la URL intenta resolverla. Si falla, se pasa al siguiente.
+ */
+object ResolverRegistry {
+    private val resolvers: List<VideoResolver> = listOf(
+        PowvideoResolver(),
+        StreamplayResolver(),
+        VidmolyResolver(),
+        DoodStreamResolver(),
+        VoeResolver(),
+        MixdropResolver(),
+        StreamtapeResolver(),
+        UqloadResolver(),
+        FilemoonResolver(),
+        GenericResolver(), // último: patrones genéricos .mp4/.m3u8
+    )
+
+    /** Devuelve el vídeo resuelto con headers o null si ningún resolutor pudo. */
+    suspend fun resolve(url: String): ResolvedVideo? {
+        for (r in resolvers) {
+            if (!r.matches(url)) continue
+            try {
+                val resolved = r.resolve(url)
+                if (resolved != null && resolved.url.isNotBlank()) return resolved
+            } catch (e: Exception) {
+                // probar con el siguiente
+            }
+        }
+        return null
+    }
+
+    /** Compatibilidad: devuelve solo la URL. */
+    suspend fun resolveUrl(url: String): String? = resolve(url)?.url
+
+    /** Nombre del resolutor que aceptaría esta URL (para diagnóstico). */
+    fun resolverNameFor(url: String): String? =
+        resolvers.firstOrNull { it.matches(url) }?.name
+}
