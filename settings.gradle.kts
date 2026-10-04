@@ -1,9 +1,8 @@
-// settings.gradle.kts — GitHub Actions con Chaquopy
+// settings.gradle.kts — GitHub Actions (online, sin Chaquopy)
 pluginManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://chaquopy.com/maven") }
         gradlePluginPortal()
     }
 }
@@ -12,7 +11,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://chaquopy.com/maven") }
     }
 }
 rootProject.name = "hdfull-mobile"

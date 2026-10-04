@@ -4,7 +4,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("com.chaquo.python") version "15.0.1"
 }
 
 val signingProps = Properties()
@@ -45,24 +44,11 @@ android {
     }
 
     buildFeatures { compose = true }
-
-    // Chaquopy: Python 3.8 para Alfa
-    chaquopy {
-        defaultConfig {
-            version = "3.8"
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-
-    sourceSets {
-        getByName("main") {
-            assets.srcDir("src/main/python")
-        }
-    }
 }
 
 dependencies {
