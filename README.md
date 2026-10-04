@@ -1,0 +1,1 @@
+#HDFull Mobile con Chaquopy\n
