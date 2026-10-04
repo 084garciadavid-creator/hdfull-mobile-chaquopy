@@ -3,7 +3,7 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://chaquo.com/maven") }
+        maven { url = uri("https://chaquopy.com/maven") }
         gradlePluginPortal()
     }
 }
@@ -12,7 +12,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://chaquo.com/maven") }
+        maven { url = uri("https://chaquopy.com/maven") }
     }
 }
 rootProject.name = "hdfull-mobile"
